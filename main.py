@@ -5,10 +5,26 @@ from typing import Union
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
+from starlette.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+origins = [
+    "frontend-app.yourdomain.com",
+    "frontend-app2.yourdomain.com:7000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Item(BaseModel):
     user: list
-    items: object
+    items: list
 
 # json
 # {
@@ -31,12 +47,12 @@ class NeuralNetwork(nn.Module):
             logits = self.linear_relu_stack(x)
             return logits
 
-app = FastAPI()
-@app.post("/return_accuracy/")
+
+@app.post("/return-accuracy/")
 def model_out(item: Item):
     datas = []
-    for env in item.items["env"]:
-        datas.append([item.user + env, item.items["id"]])
+    for json in item.items:
+        datas.append([item.user + json["env"], json["id"]])
     device = (
         "cuda"
         if torch.cuda.is_available()
@@ -52,10 +68,9 @@ def model_out(item: Item):
         model.eval()
         return model(data).tolist()[0][0]
 
-    accuracy = [] # (accuracy, id)
+    accuracy = [] 
     for data in datas:
-        accuracy.append((predict(torch.from_numpy(np.array([data[0]])).type(torch.FloatTensor)),item.items["id"]))
-    print(sorted(accuracy, reverse=True))
+        accuracy.append((predict(torch.from_numpy(np.array([list(map(int,data[0]))])).type(torch.FloatTensor)),data[1]))
     return sorted(accuracy, reverse=True)
 
 
